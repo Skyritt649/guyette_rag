@@ -46,20 +46,36 @@ llm = load_llm()
 query = st.text_input("Ask about a memory:")
 
 if query:
-    docs = vectorstore.similarity_search(query, k=3)
+    docs = vectorstore.similarity_search(query, k=2)
 
     context = "\n\n".join([doc.page_content for doc in docs])
 
     prompt = f"""
-Answer the question using ONLY the context below.
+You are a helpful assistant answering questions about family memories.
+
+Rules:
+- Answer the question clearly and concisely
+- Do NOT repeat the full context
+- Do NOT list unrelated people or memories
+- Only include relevant details
+- If the answer is found, summarize it in 2-4 sentences
+- If not found, say "I couldn't find that in the archive"
 
 Context:
 {context}
 
 Question:
 {query}
+
+Answer:
 """
 
     response = llm.invoke(prompt)
 
-    st.write(response)
+    # Clean output
+    if isinstance(response, dict):
+        answer = response.get("text", "")
+    else:
+        answer = str(response)
+    
+    st.write(answer.strip())
