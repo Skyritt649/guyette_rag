@@ -4,7 +4,6 @@ from langchain_community.document_loaders import Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings, HuggingFacePipeline
 from langchain_community.vectorstores import FAISS
-from langchain.chains.retrieval_qa.base import RetrievalQA
 
 from transformers import pipeline
 
@@ -34,7 +33,7 @@ def load_vectorstore():
 def load_llm():
     pipe = pipeline(
         "text2text-generation",
-        model="google/flan-t5-small",  # safer for memory
+        model="google/flan-t5-small",
         max_new_tokens=150
     )
     return HuggingFacePipeline(pipeline=pipe)
@@ -42,15 +41,25 @@ def load_llm():
 vectorstore = load_vectorstore()
 llm = load_llm()
 
-qa_chain = RetrievalQA.from_chain_type(
-    llm=llm,
-    retriever=vectorstore.as_retriever()
-)
-
 # ---- UI ---- #
 
 query = st.text_input("Ask about a memory:")
 
 if query:
-    response = qa_chain.invoke(query)
-    st.write(response["result"])
+    docs = vectorstore.similarity_search(query, k=3)
+
+    context = "\n\n".join([doc.page_content for doc in docs])
+
+    prompt = f"""
+Answer the question using ONLY the context below.
+
+Context:
+{context}
+
+Question:
+{query}
+"""
+
+    response = llm.invoke(prompt)
+
+    st.write(response)
