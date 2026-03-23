@@ -2,15 +2,15 @@ import streamlit as st
 
 from langchain_community.document_loaders import Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_huggingface import HuggingFaceEmbeddings, HuggingFacePipeline
 from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEmbeddings
 
 from transformers import pipeline
 
+# ---- Page Title ---- #
 st.title("Family Memory Archive")
 
-# ---- Load and Cache ---- #
-
+# ---- Load Vector Store ---- #
 @st.cache_resource
 def load_vectorstore():
     loader = Docx2txtLoader("family_memory_document.docx")
@@ -29,54 +29,58 @@ def load_vectorstore():
     vectorstore = FAISS.from_documents(docs, embeddings)
     return vectorstore
 
+# ---- Load LLM (Direct Hugging Face) ---- #
 @st.cache_resource
 def load_llm():
-    pipe = pipeline(
-        "text2text-generation",   # ✅ correct task
-        model="google/flan-t5-small",
-        max_new_tokens=150
+    return pipeline(
+        "text-generation",                # stable across environments
+        model="google/flan-t5-small",     # lightweight + works on Streamlit
+        max_new_tokens=120,
+        do_sample=False                  # deterministic output
     )
-    return HuggingFacePipeline(pipeline=pipe)
 
 vectorstore = load_vectorstore()
 llm = load_llm()
 
-# ---- UI ---- #
-
+# ---- User Input ---- #
 query = st.text_input("Ask about a memory:")
 
+# ---- RAG Pipeline ---- #
 if query:
+    # Step 1: Retrieve relevant chunks
     docs = vectorstore.similarity_search(query, k=2)
 
-    context = "\n\n".join([doc.page_content for doc in docs])
+    # Step 2: Build cleaner context
+    context = "\n\n---\n\n".join([doc.page_content for doc in docs])
 
+    # Step 3: Build strong prompt
     prompt = f"""
-    You are a helpful assistant answering questions about family memories.
-    
-    Rules:
-    - Answer briefly (2-4 sentences)
-    - Only include relevant details
-    - Do not repeat the context
-    
-    Context:
-    {context}
-    
-    Question:
-    {query}
-    
-    Answer (only the answer, nothing else):
-    """
+Answer the question using ONLY 2-3 sentences.
 
-    response = llm.invoke(prompt)
+Do NOT repeat the context.
+Only include relevant details.
 
-    # Handle LangChain / HF output formats
-    if isinstance(response, dict):
-        answer = response.get("result") or response.get("text") or str(response)
+Context:
+{context}
+
+Question:
+{query}
+
+Final Answer:
+"""
+
+    # Step 4: Generate response
+    raw_output = llm(prompt)[0]["generated_text"]
+
+    # Step 5: Remove prompt echo if present
+    if raw_output.startswith(prompt):
+        answer = raw_output[len(prompt):].strip()
     else:
-        answer = str(response)
-    
-    # 🔥 CRITICAL: Remove the prompt from the response if echoed
-    if prompt in answer:
-        answer = answer.replace(prompt, "").strip()
-    
+        answer = raw_output.strip()
+
+    # Step 6: Extra cleanup
+    if "Final Answer:" in answer:
+        answer = answer.split("Final Answer:")[-1].strip()
+
+    # Step 7: Display
     st.write(answer)
