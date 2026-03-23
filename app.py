@@ -32,10 +32,10 @@ def load_vectorstore():
 @st.cache_resource
 def load_llm():
     pipe = pipeline(
-        "text2text-generation",
+        "text-generation",
         model="google/flan-t5-small",
         max_new_tokens=150
-    )
+)
     return HuggingFacePipeline(pipeline=pipe)
 
 vectorstore = load_vectorstore()
