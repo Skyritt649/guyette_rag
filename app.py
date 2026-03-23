@@ -32,10 +32,10 @@ def load_vectorstore():
 @st.cache_resource
 def load_llm():
     pipe = pipeline(
-        "text-generation",
+        "text2text-generation",   # ✅ correct task
         model="google/flan-t5-small",
         max_new_tokens=150
-)
+    )
     return HuggingFacePipeline(pipeline=pipe)
 
 vectorstore = load_vectorstore()
@@ -51,31 +51,32 @@ if query:
     context = "\n\n".join([doc.page_content for doc in docs])
 
     prompt = f"""
-You are a helpful assistant answering questions about family memories.
-
-Rules:
-- Answer the question clearly and concisely
-- Do NOT repeat the full context
-- Do NOT list unrelated people or memories
-- Only include relevant details
-- If the answer is found, summarize it in 2-4 sentences
-- If not found, say "I couldn't find that in the archive"
-
-Context:
-{context}
-
-Question:
-{query}
-
-Answer:
-"""
+    You are a helpful assistant answering questions about family memories.
+    
+    Rules:
+    - Answer briefly (2-4 sentences)
+    - Only include relevant details
+    - Do not repeat the context
+    
+    Context:
+    {context}
+    
+    Question:
+    {query}
+    
+    Answer (only the answer, nothing else):
+    """
 
     response = llm.invoke(prompt)
 
-    # Clean output
+    # Handle LangChain / HF output formats
     if isinstance(response, dict):
-        answer = response.get("text", "")
+        answer = response.get("result") or response.get("text") or str(response)
     else:
         answer = str(response)
     
-    st.write(answer.strip())
+    # 🔥 CRITICAL: Remove the prompt from the response if echoed
+    if prompt in answer:
+        answer = answer.replace(prompt, "").strip()
+    
+    st.write(answer)
