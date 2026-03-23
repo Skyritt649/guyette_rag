@@ -4,7 +4,7 @@ langchain-community
 langchain-huggingface
 langchain-text-splitters
 faiss-cpu
-transformers==4.41.2
+transformers
 torch
 sentence-transformers
 python-docx
