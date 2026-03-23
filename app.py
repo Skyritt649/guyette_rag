@@ -1,15 +1,16 @@
 import streamlit as st
+
 from langchain_community.document_loaders import Docx2txtLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings, HuggingFacePipeline
 from langchain_community.vectorstores import FAISS
-from langchain.chains import RetrievalQA
+from langchain.chains.retrieval_qa.base import RetrievalQA
+
 from transformers import pipeline
-import os
 
 st.title("Family Memory Archive")
 
-# ---- Load and Cache Everything ---- #
+# ---- Load and Cache ---- #
 
 @st.cache_resource
 def load_vectorstore():
@@ -32,9 +33,9 @@ def load_vectorstore():
 @st.cache_resource
 def load_llm():
     pipe = pipeline(
-        "text-generation",
-        model="google/flan-t5-base",
-        max_new_tokens=200
+        "text2text-generation",
+        model="google/flan-t5-small",  # safer for memory
+        max_new_tokens=150
     )
     return HuggingFacePipeline(pipeline=pipe)
 
