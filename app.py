@@ -7,6 +7,10 @@ from langchain_huggingface import HuggingFaceEmbeddings
 
 from transformers import pipeline
 
+# ---- File Imports ---- #
+with open("rules.md", 'r', encoding='utf-8') as file:
+    rules = file.read()
+
 # ---- Page Title ---- #
 st.title("Family Memory Archive")
 
@@ -54,11 +58,7 @@ if query:
     context = "\n\n---\n\n".join([doc.page_content for doc in docs])
 
     # Step 3: Build strong prompt
-    prompt = f"""
-Answer the question using ONLY 2-3 sentences.
-
-Do NOT repeat the context.
-Only include relevant details.
+    prompt = rules + f"""
 
 Context:
 {context}
